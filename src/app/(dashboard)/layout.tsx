@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { provisionUser } from "@/lib/supabase/provision-user";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 
@@ -18,6 +19,9 @@ export default async function DashboardLayout({
     if (!user) {
       redirect("/login");
     }
+
+    // Ensure user exists in Prisma DB (idempotent upsert)
+    await provisionUser(user);
   }
 
   return (
