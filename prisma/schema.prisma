@@ -47,6 +47,9 @@ model User {
   bio                 String?
   is_portfolio_public Boolean  @default(false)
   robinhood_connected Boolean  @default(false)
+  plaid_access_token  String?
+  plaid_item_id       String?
+  plaid_connected     Boolean  @default(false)
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
 
