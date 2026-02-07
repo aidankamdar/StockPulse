@@ -1,5 +1,6 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import pg from "pg";
 
 export function isDatabaseConfigured(): boolean {
   const url = process.env.DATABASE_URL;
@@ -25,13 +26,22 @@ function getOrCreatePrismaClient(): PrismaClient | null {
   }
 
   try {
-    const connectionString = process.env.DATABASE_URL!;
-    const adapter = new PrismaPg({
+    const rawUrl = process.env.DATABASE_URL!;
+
+    // Strip sslmode from the connection string so the pg-connection-string
+    // parser doesn't override our SSL config. Supabase URLs include
+    // ?sslmode=require, but the parser treats this as verify-full and
+    // rejects Supabase's certificate chain as "self-signed". By removing
+    // sslmode from the URL and setting ssl via Pool options, we keep SSL
+    // active while accepting Supabase's certificates.
+    const connectionString = rawUrl.replace(/[?&]sslmode=[^&]+/, "");
+
+    const pool = new pg.Pool({
       connectionString,
-      // Supabase uses a certificate chain that Node.js strict TLS
-      // validation treats as "self-signed". This tells pg to accept it.
       ssl: { rejectUnauthorized: false },
     });
+
+    const adapter = new PrismaPg(pool);
 
     const client = new PrismaClient({
       adapter,
