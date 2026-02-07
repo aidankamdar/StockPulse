@@ -522,7 +522,9 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 - [x] Portfolio view: positions with live prices, total value, daily change
 - [x] P&L calculations: cost basis, unrealized gains/losses (25 unit tests, 100% coverage)
 - [x] Manual trade entry (fallback for non-Robinhood trades)
-- **Quality gate**: ✅ 46 unit tests passing (25 calculations, 13 transaction validators, 7 portfolio validators + 1 edge case). P&L math 100% tested. Build succeeds. App runs locally.
+- [x] Vercel deployment + Supabase production database
+- [x] User provisioning (bridge Supabase Auth → Prisma User table)
+- **Quality gate**: ✅ 46 unit tests passing (25 calculations, 13 transaction validators, 7 portfolio validators + 1 edge case). P&L math 100% tested. Build succeeds. App runs locally. Deployed to Vercel with live Supabase DB. Auth end-to-end working.
 
 ### Phase 2 — Analytics & Visualization (Weeks 4–6)
 - [ ] Portfolio performance chart (value over time)
