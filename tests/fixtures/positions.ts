@@ -1,0 +1,43 @@
+import type { PositionView } from "@/types/portfolio";
+
+export const mockPositions: PositionView[] = [
+  {
+    id: "pos-1",
+    symbol: "AAPL",
+    quantity: 10,
+    averageCostBasis: 150.0,
+    totalCostBasis: 1500.0,
+    currentPrice: 175.0,
+    currentValue: 1750.0,
+    unrealizedPnl: 250.0,
+    unrealizedPnlPercent: 16.67,
+    sector: "Technology",
+    lastSyncedAt: new Date().toISOString(),
+  },
+  {
+    id: "pos-2",
+    symbol: "MSFT",
+    quantity: 5,
+    averageCostBasis: 300.0,
+    totalCostBasis: 1500.0,
+    currentPrice: 350.0,
+    currentValue: 1750.0,
+    unrealizedPnl: 250.0,
+    unrealizedPnlPercent: 16.67,
+    sector: "Technology",
+    lastSyncedAt: new Date().toISOString(),
+  },
+  {
+    id: "pos-3",
+    symbol: "TSLA",
+    quantity: 3,
+    averageCostBasis: 250.0,
+    totalCostBasis: 750.0,
+    currentPrice: 200.0,
+    currentValue: 600.0,
+    unrealizedPnl: -150.0,
+    unrealizedPnlPercent: -20.0,
+    sector: "Automotive",
+    lastSyncedAt: new Date().toISOString(),
+  },
+];
