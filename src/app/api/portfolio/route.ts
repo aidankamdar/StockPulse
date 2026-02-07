@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma/client";
+import { requireDatabase } from "@/lib/prisma/client";
 import { createPortfolioSchema } from "@/lib/validators/portfolio";
 
 // GET /api/portfolio - List user's portfolios with position summaries
 export async function GET() {
   try {
+    const db = requireDatabase();
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -18,7 +20,7 @@ export async function GET() {
       );
     }
 
-    const portfolios = await prisma.portfolio.findMany({
+    const portfolios = await db.portfolio.findMany({
       where: { user_id: user.id },
       include: {
         positions: true,
@@ -67,6 +69,8 @@ export async function GET() {
 // POST /api/portfolio - Create a new portfolio
 export async function POST(request: Request) {
   try {
+    const db = requireDatabase();
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -95,7 +99,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const portfolio = await prisma.portfolio.create({
+    const portfolio = await db.portfolio.create({
       data: {
         user_id: user.id,
         name: parsed.data.name,

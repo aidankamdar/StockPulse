@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma/client";
+import { requireDatabase } from "@/lib/prisma/client";
 import { fullSync } from "@/lib/robinhood/sync";
 
 export async function POST() {
   try {
+    const db = requireDatabase();
+
     // Verify auth
     const supabase = await createClient();
     const {
@@ -19,12 +21,12 @@ export async function POST() {
     }
 
     // Get or create the user's Robinhood portfolio
-    let portfolio = await prisma.portfolio.findFirst({
+    let portfolio = await db.portfolio.findFirst({
       where: { user_id: user.id, source: "ROBINHOOD" },
     });
 
     if (!portfolio) {
-      portfolio = await prisma.portfolio.create({
+      portfolio = await db.portfolio.create({
         data: {
           user_id: user.id,
           name: "Robinhood",

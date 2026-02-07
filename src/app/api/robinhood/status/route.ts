@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma/client";
+import { requireDatabase } from "@/lib/prisma/client";
 
 export async function GET() {
   try {
+    const db = requireDatabase();
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -16,12 +18,12 @@ export async function GET() {
       );
     }
 
-    const dbUser = await prisma.user.findUnique({
+    const dbUser = await db.user.findUnique({
       where: { id: user.id },
       select: { robinhood_connected: true },
     });
 
-    const portfolio = await prisma.portfolio.findFirst({
+    const portfolio = await db.portfolio.findFirst({
       where: { user_id: user.id, source: "ROBINHOOD" },
       include: {
         positions: {

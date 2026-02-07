@@ -1,13 +1,11 @@
 import { execFile } from "child_process";
 import { promisify } from "util";
 import path from "path";
-import { prisma } from "@/lib/prisma/client";
+import { requireDatabase } from "@/lib/prisma/client";
 import {
   parseRobinhoodOutput,
   RobinhoodPortfolioSchema,
   RobinhoodOrdersSchema,
-  type RobinhoodPortfolio,
-  type RobinhoodOrders,
 } from "./parser";
 
 const execFileAsync = promisify(execFile);
@@ -42,6 +40,7 @@ async function runPythonScript(scriptName: string): Promise<string> {
 // ─── Sync positions ─────────────────────────────────────────────────────────
 
 export async function syncPortfolio(userId: string, portfolioId: string) {
+  const db = requireDatabase();
   const raw = await runPythonScript("fetch_portfolio.py");
   const result = parseRobinhoodOutput(raw, RobinhoodPortfolioSchema);
 
@@ -54,7 +53,7 @@ export async function syncPortfolio(userId: string, portfolioId: string) {
 
   // Upsert each position
   for (const pos of positions) {
-    await prisma.position.upsert({
+    await db.position.upsert({
       where: {
         portfolio_id_symbol: {
           portfolio_id: portfolioId,
@@ -88,7 +87,7 @@ export async function syncPortfolio(userId: string, portfolioId: string) {
 
   // Remove positions that no longer exist in Robinhood
   const syncedSymbols = positions.map((p) => p.symbol);
-  await prisma.position.deleteMany({
+  await db.position.deleteMany({
     where: {
       portfolio_id: portfolioId,
       symbol: { notIn: syncedSymbols },
@@ -96,13 +95,13 @@ export async function syncPortfolio(userId: string, portfolioId: string) {
   });
 
   // Mark portfolio as Robinhood-connected
-  await prisma.portfolio.update({
+  await db.portfolio.update({
     where: { id: portfolioId },
     data: { source: "ROBINHOOD" },
   });
 
   // Mark user as connected
-  await prisma.user.update({
+  await db.user.update({
     where: { id: userId },
     data: { robinhood_connected: true },
   });
@@ -113,6 +112,7 @@ export async function syncPortfolio(userId: string, portfolioId: string) {
 // ─── Sync orders/transactions ────────────────────────────────────────────────
 
 export async function syncOrders(portfolioId: string) {
+  const db = requireDatabase();
   const raw = await runPythonScript("fetch_orders.py");
   const result = parseRobinhoodOutput(raw, RobinhoodOrdersSchema);
 
@@ -131,7 +131,7 @@ export async function syncOrders(portfolioId: string) {
     }
 
     // Check if already synced (deduplication by robinhood_order_id)
-    const existing = await prisma.transaction.findUnique({
+    const existing = await db.transaction.findUnique({
       where: { robinhood_order_id: tx.robinhood_order_id },
     });
 
@@ -140,7 +140,7 @@ export async function syncOrders(portfolioId: string) {
       continue;
     }
 
-    await prisma.transaction.create({
+    await db.transaction.create({
       data: {
         portfolio_id: portfolioId,
         symbol: tx.symbol,

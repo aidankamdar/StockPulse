@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma/client";
+import { requireDatabase } from "@/lib/prisma/client";
 import { createTransactionSchema } from "@/lib/validators/transaction";
 import {
   calculateAverageCostBasis,
@@ -10,6 +10,8 @@ import {
 // GET /api/transactions?portfolio_id=xxx&cursor=xxx&limit=20
 export async function GET(request: NextRequest) {
   try {
+    const db = requireDatabase();
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -37,7 +39,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify portfolio belongs to user
-    const portfolio = await prisma.portfolio.findFirst({
+    const portfolio = await db.portfolio.findFirst({
       where: { id: portfolioId, user_id: user.id },
     });
 
@@ -48,7 +50,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const transactions = await prisma.transaction.findMany({
+    const transactions = await db.transaction.findMany({
       where: {
         portfolio_id: portfolioId,
         ...(cursor ? { id: { lt: cursor } } : {}),
@@ -90,6 +92,8 @@ export async function GET(request: NextRequest) {
 // POST /api/transactions - Create a manual transaction
 export async function POST(request: Request) {
   try {
+    const db = requireDatabase();
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -119,7 +123,7 @@ export async function POST(request: Request) {
     }
 
     // Verify portfolio belongs to user
-    const portfolio = await prisma.portfolio.findFirst({
+    const portfolio = await db.portfolio.findFirst({
       where: { id: parsed.data.portfolio_id, user_id: user.id },
     });
 
@@ -131,7 +135,7 @@ export async function POST(request: Request) {
     }
 
     // Create the transaction
-    const transaction = await prisma.transaction.create({
+    const transaction = await db.transaction.create({
       data: {
         portfolio_id: parsed.data.portfolio_id,
         symbol: parsed.data.symbol,
@@ -147,7 +151,7 @@ export async function POST(request: Request) {
     });
 
     // Recalculate position from all trades for this symbol
-    const allTrades = await prisma.transaction.findMany({
+    const allTrades = await db.transaction.findMany({
       where: {
         portfolio_id: parsed.data.portfolio_id,
         symbol: parsed.data.symbol,
@@ -169,7 +173,7 @@ export async function POST(request: Request) {
 
     if (totalShares > 0) {
       // Get current price from existing position or use last trade price
-      const existingPosition = await prisma.position.findUnique({
+      const existingPosition = await db.position.findUnique({
         where: {
           portfolio_id_symbol: {
             portfolio_id: parsed.data.portfolio_id,
@@ -188,7 +192,7 @@ export async function POST(request: Request) {
         currentPrice,
       });
 
-      await prisma.position.upsert({
+      await db.position.upsert({
         where: {
           portfolio_id_symbol: {
             portfolio_id: parsed.data.portfolio_id,
@@ -218,7 +222,7 @@ export async function POST(request: Request) {
       });
     } else {
       // All shares sold, remove position
-      await prisma.position.deleteMany({
+      await db.position.deleteMany({
         where: {
           portfolio_id: parsed.data.portfolio_id,
           symbol: parsed.data.symbol,
