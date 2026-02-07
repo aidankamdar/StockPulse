@@ -6,36 +6,50 @@ export function isDatabaseConfigured(): boolean {
   return Boolean(url && url !== "postgresql://placeholder");
 }
 
-function createPrismaClient(): PrismaClient | null {
+const globalForPrisma = globalThis as unknown as {
+  _prisma: PrismaClient | null | undefined;
+};
+
+/**
+ * Lazily creates and caches the Prisma client.
+ * Connection is deferred until the client is first requested via requireDatabase().
+ */
+function getOrCreatePrismaClient(): PrismaClient | null {
+  if (globalForPrisma._prisma !== undefined) {
+    return globalForPrisma._prisma;
+  }
+
   if (!isDatabaseConfigured()) {
+    globalForPrisma._prisma = null;
     return null;
   }
 
-  const connectionString = process.env.DATABASE_URL!;
-  const adapter = new PrismaPg({ connectionString });
+  try {
+    const connectionString = process.env.DATABASE_URL!;
+    const adapter = new PrismaPg({ connectionString });
 
-  return new PrismaClient({
-    adapter,
-    log: process.env.NODE_ENV === "development" ? ["query"] : [],
-  });
+    const client = new PrismaClient({
+      adapter,
+      log: process.env.NODE_ENV === "development" ? ["query"] : [],
+    });
+
+    globalForPrisma._prisma = client;
+    return client;
+  } catch (error) {
+    console.error("[prisma] Failed to create client:", error);
+    globalForPrisma._prisma = null;
+    return null;
+  }
 }
-
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | null | undefined;
-};
-
-export const prisma =
-  globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
 /**
  * Returns the Prisma client or throws if database is not configured.
- * Use in API routes to get a non-null client with a friendly error.
+ * Use in API routes and server functions to get a non-null client.
  */
 export function requireDatabase(): PrismaClient {
-  if (!prisma) {
-    throw new Error("Database not configured. Set DATABASE_URL in .env.local");
+  const client = getOrCreatePrismaClient();
+  if (!client) {
+    throw new Error("Database not configured. Set DATABASE_URL in environment variables.");
   }
-  return prisma;
+  return client;
 }

@@ -21,7 +21,12 @@ export default async function DashboardLayout({
     }
 
     // Ensure user exists in Prisma DB (idempotent upsert)
-    await provisionUser(user);
+    // Wrapped in try/catch so a DB error doesn't crash the dashboard
+    try {
+      await provisionUser(user);
+    } catch (error) {
+      console.error("[dashboard] Failed to provision user:", error);
+    }
   }
 
   return (
