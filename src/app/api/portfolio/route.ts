@@ -20,13 +20,26 @@ export async function GET() {
       );
     }
 
-    const portfolios = await db.portfolio.findMany({
+    let portfolios = await db.portfolio.findMany({
       where: { user_id: user.id },
       include: {
         positions: true,
       },
       orderBy: { created_at: "asc" },
     });
+
+    // Auto-create a default portfolio on first visit
+    if (portfolios.length === 0) {
+      const newPortfolio = await db.portfolio.create({
+        data: {
+          user_id: user.id,
+          name: "My Portfolio",
+          source: "MANUAL",
+        },
+        include: { positions: true },
+      });
+      portfolios = [newPortfolio];
+    }
 
     const data = portfolios.map((p) => {
       const totalValue = p.positions.reduce(

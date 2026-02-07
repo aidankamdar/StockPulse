@@ -1,14 +1,19 @@
 "use client";
 
+import { useState } from "react";
+
 import { usePortfolios, usePositions, useRobinhoodSync } from "@/hooks/use-portfolio";
 import { PortfolioSummaryBar } from "@/components/portfolio/portfolio-summary-bar";
 import { PositionTable } from "@/components/portfolio/position-table";
+import { AddTransactionDialog } from "@/components/portfolio/add-transaction-dialog";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Plus } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils/format";
 import type { PositionView } from "@/types/portfolio";
 
 export function DashboardClient() {
+  const [showAddTrade, setShowAddTrade] = useState(false);
+
   const { data: portfolios, isLoading: portfoliosLoading } = usePortfolios();
   const primaryPortfolio = portfolios?.[0];
 
@@ -62,16 +67,22 @@ export function DashboardClient() {
     );
   }
 
-  if (!primaryPortfolio) {
+  // Empty state — portfolio exists but no positions yet
+  if (positionViews.length === 0) {
     return (
       <div className="rounded-lg border border-border bg-card p-8 text-center">
         <h2 className="text-lg font-semibold">Get started</h2>
         <p className="mt-2 text-muted-foreground">
-          Sync your Robinhood account to see your portfolio, or add trades
-          manually.
+          Add your first trade to see your portfolio, or sync your Robinhood
+          account.
         </p>
         <div className="mt-4 flex justify-center gap-3">
+          <Button onClick={() => setShowAddTrade(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Trade
+          </Button>
           <Button
+            variant="outline"
             onClick={() => sync.mutate()}
             disabled={sync.isPending}
           >
@@ -86,13 +97,21 @@ export function DashboardClient() {
             {sync.error.message}
           </p>
         )}
+
+        {primaryPortfolio && (
+          <AddTransactionDialog
+            portfolioId={primaryPortfolio.id}
+            open={showAddTrade}
+            onClose={() => setShowAddTrade(false)}
+          />
+        )}
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Sync button */}
+      {/* Action bar */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
           {positionViews[0]?.lastSyncedAt && (
@@ -101,17 +120,23 @@ export function DashboardClient() {
             </span>
           )}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => sync.mutate()}
-          disabled={sync.isPending}
-        >
-          <RefreshCw
-            className={`mr-2 h-4 w-4 ${sync.isPending ? "animate-spin" : ""}`}
-          />
-          {sync.isPending ? "Syncing..." : "Sync"}
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={() => setShowAddTrade(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Trade
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => sync.mutate()}
+            disabled={sync.isPending}
+          >
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${sync.isPending ? "animate-spin" : ""}`}
+            />
+            {sync.isPending ? "Syncing..." : "Sync"}
+          </Button>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -129,6 +154,15 @@ export function DashboardClient() {
         <h2 className="mb-4 text-lg font-semibold">Positions</h2>
         <PositionTable positions={positionViews} />
       </div>
+
+      {/* Add trade dialog */}
+      {primaryPortfolio && (
+        <AddTransactionDialog
+          portfolioId={primaryPortfolio.id}
+          open={showAddTrade}
+          onClose={() => setShowAddTrade(false)}
+        />
+      )}
     </div>
   );
 }
