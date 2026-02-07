@@ -26,7 +26,12 @@ function getOrCreatePrismaClient(): PrismaClient | null {
 
   try {
     const connectionString = process.env.DATABASE_URL!;
-    const adapter = new PrismaPg({ connectionString });
+    const adapter = new PrismaPg({
+      connectionString,
+      // Supabase uses a certificate chain that Node.js strict TLS
+      // validation treats as "self-signed". This tells pg to accept it.
+      ssl: { rejectUnauthorized: false },
+    });
 
     const client = new PrismaClient({
       adapter,
