@@ -35,7 +35,7 @@ export interface TransactionView {
   fees: number;
   executedAt: string;
   notes: string | null;
-  source: "ROBINHOOD_SYNC" | "MANUAL" | "CSV_IMPORT";
+  source: "ROBINHOOD_SYNC" | "PLAID_SYNC" | "MANUAL" | "CSV_IMPORT";
 }
 
 export interface VisibilitySettings {
