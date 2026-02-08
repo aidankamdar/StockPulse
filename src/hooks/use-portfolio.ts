@@ -38,9 +38,51 @@ export function usePositions(portfolioId: string | undefined) {
   });
 }
 
-// ─── Robinhood sync ──────────────────────────────────────────────────────────
+// ─── Plaid sync ─────────────────────────────────────────────────────────────
 
-async function triggerSync() {
+async function triggerPlaidSync() {
+  const res = await fetch("/api/plaid/sync", { method: "POST" });
+  if (!res.ok) {
+    const json = await res.json();
+    throw new Error(json.error?.message ?? "Sync failed");
+  }
+  return res.json();
+}
+
+export function usePlaidSync() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: triggerPlaidSync,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portfolios"] });
+      queryClient.invalidateQueries({ queryKey: ["positions"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["plaid-status"] });
+    },
+  });
+}
+
+// ─── Plaid status ───────────────────────────────────────────────────────────
+
+async function fetchPlaidStatus() {
+  const res = await fetch("/api/plaid/status");
+  if (!res.ok) throw new Error("Failed to check Plaid status");
+  const json = await res.json();
+  return json.data;
+}
+
+export function usePlaidStatus() {
+  return useQuery({
+    queryKey: ["plaid-status"],
+    queryFn: fetchPlaidStatus,
+    staleTime: CACHE_TIMES.PORTFOLIO,
+  });
+}
+
+// ─── Legacy Robinhood hooks (kept for backward compat) ──────────────────────
+
+async function triggerRobinhoodSync() {
   const res = await fetch("/api/robinhood/sync", { method: "POST" });
   if (!res.ok) {
     const json = await res.json();
@@ -53,7 +95,7 @@ export function useRobinhoodSync() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: triggerSync,
+    mutationFn: triggerRobinhoodSync,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portfolios"] });
       queryClient.invalidateQueries({ queryKey: ["positions"] });
@@ -61,8 +103,6 @@ export function useRobinhoodSync() {
     },
   });
 }
-
-// ─── Robinhood status ────────────────────────────────────────────────────────
 
 async function fetchRobinhoodStatus() {
   const res = await fetch("/api/robinhood/status");

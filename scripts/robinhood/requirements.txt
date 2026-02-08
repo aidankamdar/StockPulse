@@ -1,2 +1,0 @@
-robin-stocks==3.0.6
-pyotp==2.9.0

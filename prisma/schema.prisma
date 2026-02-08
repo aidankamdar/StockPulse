@@ -11,6 +11,7 @@ datasource db {
 
 enum PortfolioSource {
   ROBINHOOD
+  PLAID
   MANUAL
 }
 
@@ -22,6 +23,7 @@ enum TransactionType {
 
 enum TransactionSource {
   ROBINHOOD_SYNC
+  PLAID_SYNC
   MANUAL
   CSV_IMPORT
 }
@@ -113,7 +115,8 @@ model Transaction {
   executed_at        DateTime
   notes              String?
   source             TransactionSource @default(MANUAL)
-  robinhood_order_id String?           @unique
+  robinhood_order_id  String?           @unique
+  plaid_transaction_id String?          @unique
   created_at         DateTime          @default(now())
   updated_at         DateTime          @updatedAt
 

@@ -1,4 +1,4 @@
-import { PlaidTest } from "./plaid-test";
+import { PlaidConnectCard } from "@/components/settings/plaid-connect-card";
 
 export default function SettingsPage() {
   return (
@@ -11,7 +11,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Plaid Investment Connection */}
-      <PlaidTest />
+      <PlaidConnectCard />
 
       {/* Manual Entry Note */}
       <div className="rounded-lg border border-border bg-card p-6">
