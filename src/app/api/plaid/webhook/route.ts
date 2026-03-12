@@ -82,7 +82,12 @@ async function verifyPlaidWebhook(request: NextRequest, rawBody: string): Promis
       { name: "ECDSA", namedCurve: "P-256" },
       false,
       ["verify"]
-    );
+    ).catch((err) => {
+      console.warn("[plaid/webhook] Failed to import JWK:", err);
+      return null;
+    });
+
+    if (!cryptoKey) return false;
 
     const [, payloadB64, signatureB64] = verificationToken.split(".");
     if (!payloadB64 || !signatureB64) return false;

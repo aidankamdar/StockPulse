@@ -184,12 +184,12 @@ export function calculatePeriodBreakdown(
     let key: string;
 
     if (groupBy === "week") {
-      // ISO week: find Monday of this snapshot's week
-      const day = date.getUTCDay(); // 0=Sun, 1=Mon...
-      const diff = (day === 0 ? -6 : 1 - day); // adjust so Monday=0
+      const day = date.getUTCDay();
+      const daysSinceMonday = (day + 6) % 7; // 0=Mon, 1=Tue, ..., 6=Sun
       const monday = new Date(date);
-      monday.setUTCDate(date.getUTCDate() + diff);
-      key = monday.toISOString().slice(0, 10); // YYYY-MM-DD of Monday
+      monday.setUTCDate(date.getUTCDate() - daysSinceMonday);
+      monday.setUTCHours(0, 0, 0, 0);
+      key = monday.toISOString().slice(0, 10);
     } else {
       key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
     }
