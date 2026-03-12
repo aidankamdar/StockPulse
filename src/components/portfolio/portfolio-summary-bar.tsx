@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { PriceChangeIndicator } from "@/components/shared/price-change-indicator";
 import { formatCurrency } from "@/lib/utils/format";
-import { DollarSign, TrendingUp, BarChart3, Layers } from "lucide-react";
+import { DollarSign, TrendingUp, BarChart3, Layers, Banknote } from "lucide-react";
 
 interface PortfolioSummaryBarProps {
   totalValue: number;
@@ -12,6 +12,7 @@ interface PortfolioSummaryBarProps {
   totalPnl: number;
   totalPnlPercent: number;
   positionCount: number;
+  cashBalance?: number;
 }
 
 export function PortfolioSummaryBar({
@@ -21,6 +22,7 @@ export function PortfolioSummaryBar({
   totalPnl,
   totalPnlPercent,
   positionCount,
+  cashBalance,
 }: PortfolioSummaryBarProps) {
   const cards = [
     {
@@ -49,8 +51,20 @@ export function PortfolioSummaryBar({
     },
   ];
 
+  // Add cash card if there's a cash balance
+  if (cashBalance !== undefined && cashBalance > 0) {
+    cards.push({
+      title: "Cash",
+      icon: Banknote,
+      value: formatCurrency(cashBalance),
+      change: null,
+    });
+  }
+
+  const gridCols = cards.length > 4 ? "lg:grid-cols-5" : "lg:grid-cols-4";
+
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className={`grid gap-4 md:grid-cols-2 ${gridCols}`}>
       {cards.map((card) => (
         <Card key={card.title}>
           <CardContent className="p-6">

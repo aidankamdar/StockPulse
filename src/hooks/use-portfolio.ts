@@ -40,13 +40,19 @@ export function usePositions(portfolioId: string | undefined) {
 
 // ─── Plaid sync ─────────────────────────────────────────────────────────────
 
-async function triggerPlaidSync() {
+export interface PlaidSyncResult {
+  positions: number;
+  transactions_synced: number;
+  transactions_skipped: number;
+}
+
+async function triggerPlaidSync(): Promise<PlaidSyncResult> {
   const res = await fetch("/api/plaid/sync", { method: "POST" });
+  const json = await res.json();
   if (!res.ok) {
-    const json = await res.json();
     throw new Error(json.error?.message ?? "Sync failed");
   }
-  return res.json();
+  return json.data;
 }
 
 export function usePlaidSync() {

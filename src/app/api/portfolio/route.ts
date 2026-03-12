@@ -65,6 +65,7 @@ export async function GET() {
         total_cost_basis: totalCostBasis,
         total_pnl: totalPnl,
         total_pnl_percent: totalPnlPercent,
+        cash_balance: Number(p.cash_balance ?? 0),
         created_at: p.created_at,
       };
     });

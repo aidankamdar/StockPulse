@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { TrendingUp } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils/cn";
 import { mainNavItems, bottomNavItems } from "@/config/navigation";
 
@@ -34,6 +35,11 @@ export function Sidebar() {
             >
               <item.icon className="h-4 w-4" />
               {item.title}
+              {item.badge && (
+                <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0">
+                  {item.badge}
+                </Badge>
+              )}
             </Link>
           );
         })}

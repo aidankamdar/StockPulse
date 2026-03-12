@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requirePlaidClient } from "@/lib/plaid/client";
+import { decryptToken } from "@/lib/plaid/encryption";
 import { requireDatabase } from "@/lib/prisma/client";
 
 export async function GET() {
@@ -41,7 +42,7 @@ export async function GET() {
 
     // Fetch holdings from Plaid
     const response = await plaid.investmentsHoldingsGet({
-      access_token: dbUser.plaid_access_token,
+      access_token: decryptToken(dbUser.plaid_access_token),
     });
 
     const { accounts, holdings, securities } = response.data;

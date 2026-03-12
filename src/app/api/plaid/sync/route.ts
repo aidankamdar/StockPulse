@@ -61,6 +61,8 @@ export async function POST() {
         message: "Sync complete",
         portfolio_id: portfolio.id,
         positions: result.positions,
+        holdings_received: result.holdingsReceived,
+        securities_received: result.securitiesReceived,
         transactions_synced: result.orders.synced,
         transactions_skipped: result.orders.skipped,
       },
