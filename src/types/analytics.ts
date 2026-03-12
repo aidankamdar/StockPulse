@@ -66,6 +66,37 @@ export interface GainerLoser {
   unrealizedPnlPercent: number;
 }
 
+// ─── Stock Historicals ───────────────────────────────────────────────────────
+
+export type HistoricalSpan = "week" | "month" | "3month" | "year" | "5year";
+export type HistoricalInterval = "5minute" | "10minute" | "day" | "week" | "month";
+
+export interface StockHistoricalPoint {
+  date: string;
+  open: number;
+  close: number;
+  high: number;
+  low: number;
+  volume: number;
+}
+
+export interface StockHistoricals {
+  symbol: string;
+  span: string;
+  interval: string;
+  points: StockHistoricalPoint[];
+}
+
+// ─── Period Breakdown ────────────────────────────────────────────────────────
+
+export interface PeriodBreakdownItem {
+  label: string;
+  startValue: number;
+  endValue: number;
+  absoluteReturn: number;
+  percentReturn: number;
+}
+
 // ─── Watchlist ──────────────────────────────────────────────────────────────
 
 export interface WatchlistItemView {

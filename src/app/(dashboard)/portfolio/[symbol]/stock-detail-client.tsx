@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -12,7 +12,7 @@ import {
   BarChart3,
 } from "lucide-react";
 
-import { useStockDetail } from "@/hooks/use-analytics";
+import { useStockDetail, useStockHistoricals } from "@/hooks/use-analytics";
 import { usePortfolios, usePositions } from "@/hooks/use-portfolio";
 import { useTransactions } from "@/hooks/use-transactions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -20,12 +20,26 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PriceChangeIndicator } from "@/components/shared/price-change-indicator";
+import { StockPriceChart } from "@/components/charts/stock-price-chart";
 import {
   formatCurrency,
   formatNumber,
   formatPercent,
   formatDate,
 } from "@/lib/utils/format";
+
+import type { HistoricalSpan, HistoricalInterval } from "@/types/analytics";
+
+const CHART_PERIODS: {
+  label: string;
+  span: HistoricalSpan;
+  interval: HistoricalInterval;
+}[] = [
+  { label: "1W", span: "week", interval: "day" },
+  { label: "1M", span: "month", interval: "day" },
+  { label: "3M", span: "3month", interval: "day" },
+  { label: "1Y", span: "year", interval: "week" },
+];
 
 import type { PositionView } from "@/types/portfolio";
 
@@ -34,7 +48,15 @@ interface StockDetailClientProps {
 }
 
 export function StockDetailClient({ symbol }: StockDetailClientProps) {
+  const [chartPeriodIndex, setChartPeriodIndex] = useState(1); // default 1M
+  const selectedPeriod = CHART_PERIODS[chartPeriodIndex]!;
+
   const { data: stockDetail, isLoading: stockLoading } = useStockDetail(symbol);
+  const { data: historicals, isLoading: historicalsLoading } = useStockHistoricals(
+    symbol,
+    selectedPeriod.span,
+    selectedPeriod.interval
+  );
 
   const { data: portfolios } = usePortfolios();
   const portfolioId = portfolios?.[0]?.id;
@@ -123,6 +145,41 @@ export function StockDetailClient({ symbol }: StockDetailClientProps) {
           </p>
         </div>
       )}
+
+      {/* Price Chart */}
+      <Card>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <BarChart3 className="h-4 w-4" />
+            Price History
+          </CardTitle>
+          <div className="flex gap-1">
+            {CHART_PERIODS.map((p, i) => (
+              <button
+                key={p.label}
+                onClick={() => setChartPeriodIndex(i)}
+                className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                  i === chartPeriodIndex
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {historicalsLoading ? (
+            <Skeleton className="h-[240px] w-full" />
+          ) : (
+            <StockPriceChart
+              data={historicals?.points ?? []}
+              isPositive={(stockDetail?.changePercent ?? 0) >= 0}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left column: Position + Transactions */}

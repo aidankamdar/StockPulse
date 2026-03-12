@@ -3,7 +3,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { CACHE_TIMES } from "@/lib/utils/constants";
 
-import type { SnapshotView, StockDetail, PerformancePeriod } from "@/types/analytics";
+import type {
+  SnapshotView,
+  StockDetail,
+  PerformancePeriod,
+  StockHistoricals,
+  HistoricalSpan,
+  HistoricalInterval,
+} from "@/types/analytics";
 
 // ─── Fetch portfolio snapshots ──────────────────────────────────────────────
 
@@ -46,5 +53,33 @@ export function useStockDetail(symbol: string | undefined) {
     queryFn: () => fetchStockDetail(symbol!),
     enabled: !!symbol,
     staleTime: CACHE_TIMES.STOCK_QUOTE,
+  });
+}
+
+// ─── Fetch stock historicals ────────────────────────────────────────────────
+
+async function fetchStockHistoricals(
+  symbol: string,
+  span: HistoricalSpan,
+  interval: HistoricalInterval
+): Promise<StockHistoricals> {
+  const res = await fetch(
+    `/api/stocks/${encodeURIComponent(symbol)}/historicals?span=${span}&interval=${interval}`
+  );
+  if (!res.ok) throw new Error(`Failed to fetch historicals for ${symbol}`);
+  const json = await res.json();
+  return json.data;
+}
+
+export function useStockHistoricals(
+  symbol: string | undefined,
+  span: HistoricalSpan = "month",
+  interval: HistoricalInterval = "day"
+) {
+  return useQuery({
+    queryKey: ["stock-historicals", symbol, span, interval],
+    queryFn: () => fetchStockHistoricals(symbol!, span, interval),
+    enabled: !!symbol,
+    staleTime: CACHE_TIMES.HISTORICAL,
   });
 }

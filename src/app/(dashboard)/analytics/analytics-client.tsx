@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BarChart3, PieChart as PieChartIcon } from "lucide-react";
+import { BarChart3, PieChart as PieChartIcon, Calendar } from "lucide-react";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,14 +15,17 @@ import {
   calculateSectorAllocation,
   calculateTopGainersLosers,
   calculatePeriodReturn,
+  calculatePeriodBreakdown,
 } from "@/lib/calculations/analytics";
 import { formatCurrency, formatPercent } from "@/lib/utils/format";
+import { cn } from "@/lib/utils/cn";
 
-import type { PerformancePeriod, PortfolioChartPoint } from "@/types/analytics";
+import type { PerformancePeriod, PortfolioChartPoint, PeriodBreakdownItem } from "@/types/analytics";
 import type { PositionView } from "@/types/portfolio";
 
 export function AnalyticsClient() {
   const [period, setPeriod] = useState<PerformancePeriod>("1M");
+  const [breakdownGroupBy, setBreakdownGroupBy] = useState<"week" | "month">("month");
 
   const { data: portfolios, isLoading: portfoliosLoading } = usePortfolios();
   const portfolioId = portfolios?.[0]?.id;
@@ -50,6 +53,12 @@ export function AnalyticsClient() {
 
   const sectorAllocation = calculateSectorAllocation(typedPositions);
   const { gainers, losers } = calculateTopGainersLosers(typedPositions, 5);
+
+  // Use ALL-time snapshots for breakdown (so all weeks/months are visible regardless of chart period)
+  const { data: allSnapshots } = usePortfolioSnapshots(portfolioId, "ALL");
+  const periodBreakdown: PeriodBreakdownItem[] = allSnapshots?.length
+    ? calculatePeriodBreakdown(allSnapshots, breakdownGroupBy)
+    : [];
 
   // ─── Loading state ──────────────────────────────────────────────────────────
 
@@ -153,6 +162,94 @@ export function AnalyticsClient() {
             type="losers"
           />
         </div>
+      )}
+
+      {/* Weekly / Monthly Gains & Losses */}
+      {periodBreakdown.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Calendar className="h-5 w-5" />
+              Gains &amp; Losses by Period
+            </CardTitle>
+            <div className="flex gap-1">
+              {(["week", "month"] as const).map((g) => (
+                <button
+                  key={g}
+                  onClick={() => setBreakdownGroupBy(g)}
+                  className={`rounded px-3 py-1 text-xs font-medium capitalize transition-colors ${
+                    breakdownGroupBy === g
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {g === "week" ? "Weekly" : "Monthly"}
+                </button>
+              ))}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">
+                      Period
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">
+                      Start Value
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">
+                      End Value
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">
+                      Return
+                    </th>
+                    <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">
+                      Return %
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {periodBreakdown.slice(0, 12).map((item) => (
+                    <tr
+                      key={item.label}
+                      className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors"
+                    >
+                      <td className="px-4 py-2.5 text-sm font-medium">
+                        {item.label}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-sm tabular-nums text-muted-foreground">
+                        {formatCurrency(item.startValue)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-sm tabular-nums text-muted-foreground">
+                        {formatCurrency(item.endValue)}
+                      </td>
+                      <td
+                        className={cn(
+                          "px-4 py-2.5 text-right text-sm tabular-nums font-medium",
+                          item.absoluteReturn >= 0 ? "text-success" : "text-loss"
+                        )}
+                      >
+                        {item.absoluteReturn >= 0 ? "+" : ""}
+                        {formatCurrency(item.absoluteReturn)}
+                      </td>
+                      <td
+                        className={cn(
+                          "px-4 py-2.5 text-right text-sm tabular-nums font-medium",
+                          item.percentReturn >= 0 ? "text-success" : "text-loss"
+                        )}
+                      >
+                        {item.percentReturn >= 0 ? "+" : ""}
+                        {formatPercent(item.percentReturn)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Sector Allocation */}

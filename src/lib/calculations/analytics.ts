@@ -11,6 +11,7 @@ import type {
   GainerLoser,
   SnapshotView,
   PerformancePeriod,
+  PeriodBreakdownItem,
 } from "@/types/analytics";
 
 // ─── Sector Allocation ──────────────────────────────────────────────────────
@@ -161,4 +162,89 @@ export function calculatePeriodReturn(snapshots: SnapshotView[]): {
       : 0;
 
   return { absoluteReturn, percentReturn };
+}
+
+// ─── Period Breakdown ────────────────────────────────────────────────────────
+
+/**
+ * Groups sorted snapshots into weekly or monthly buckets and calculates
+ * the P&L for each bucket. Returns most-recent periods first.
+ */
+export function calculatePeriodBreakdown(
+  snapshots: SnapshotView[],
+  groupBy: "week" | "month"
+): PeriodBreakdownItem[] {
+  if (snapshots.length < 2) return [];
+
+  // Group snapshots by ISO week (YYYY-Www) or month (YYYY-MM)
+  const buckets = new Map<string, SnapshotView[]>();
+
+  for (const snapshot of snapshots) {
+    const date = new Date(snapshot.date);
+    let key: string;
+
+    if (groupBy === "week") {
+      // ISO week: find Monday of this snapshot's week
+      const day = date.getUTCDay(); // 0=Sun, 1=Mon...
+      const diff = (day === 0 ? -6 : 1 - day); // adjust so Monday=0
+      const monday = new Date(date);
+      monday.setUTCDate(date.getUTCDate() + diff);
+      key = monday.toISOString().slice(0, 10); // YYYY-MM-DD of Monday
+    } else {
+      key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+    }
+
+    const existing = buckets.get(key) ?? [];
+    existing.push(snapshot);
+    buckets.set(key, existing);
+  }
+
+  const items: PeriodBreakdownItem[] = [];
+
+  for (const [key, group] of buckets) {
+    if (group.length < 1) continue;
+
+    // Sort group chronologically
+    group.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    const first = group[0]!;
+    const last = group[group.length - 1]!;
+
+    const absoluteReturn = round4(last.totalValue - first.totalValue);
+    const percentReturn =
+      first.totalValue > 0
+        ? round4(((last.totalValue - first.totalValue) / first.totalValue) * 100)
+        : 0;
+
+    let label: string;
+    if (groupBy === "week") {
+      const monday = new Date(key);
+      label = monday.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      });
+    } else {
+      const [year, month] = key.split("-");
+      const d = new Date(
+        parseInt(year!, 10),
+        parseInt(month!, 10) - 1,
+        1
+      );
+      label = d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    }
+
+    items.push({
+      label,
+      startValue: first.totalValue,
+      endValue: last.totalValue,
+      absoluteReturn,
+      percentReturn,
+    });
+  }
+
+  // Sort most-recent first
+  items.reverse();
+
+  return items;
 }
