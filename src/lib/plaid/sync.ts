@@ -4,6 +4,7 @@
  */
 
 import { requirePlaidClient } from "./client";
+import { decryptToken } from "./encryption";
 import { requireDatabase } from "@/lib/prisma/client";
 
 import type { TransactionType } from "@/generated/prisma/client";
@@ -24,9 +25,11 @@ export async function syncHoldings(userId: string, portfolioId: string) {
     throw new Error("No Plaid account connected");
   }
 
+  const accessToken = decryptToken(user.plaid_access_token);
+
   // Fetch holdings from Plaid
   const response = await plaid.investmentsHoldingsGet({
-    access_token: user.plaid_access_token,
+    access_token: accessToken,
   });
 
   const { holdings, securities } = response.data;
@@ -145,6 +148,8 @@ export async function syncTransactions(userId: string, portfolioId: string) {
     throw new Error("No Plaid account connected");
   }
 
+  const accessToken = decryptToken(user.plaid_access_token);
+
   // Fetch past 24 months of investment transactions
   const now = new Date();
   const twoYearsAgo = new Date(now);
@@ -154,7 +159,7 @@ export async function syncTransactions(userId: string, portfolioId: string) {
   const endDate = now.toISOString().split("T")[0]!;
 
   const response = await plaid.investmentsTransactionsGet({
-    access_token: user.plaid_access_token,
+    access_token: accessToken,
     start_date: startDate,
     end_date: endDate,
   });

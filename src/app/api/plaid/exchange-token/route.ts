@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requirePlaidClient } from "@/lib/plaid/client";
+import { encryptToken } from "@/lib/plaid/encryption";
 import { requireDatabase } from "@/lib/prisma/client";
 import { z } from "zod";
 
@@ -49,11 +50,14 @@ export async function POST(request: NextRequest) {
 
     const { access_token, item_id } = response.data;
 
+    // Encrypt token before storing (never persist plaintext access tokens)
+    const encryptedToken = encryptToken(access_token);
+
     // Store in User table (server-side only)
     await db.user.update({
       where: { id: user.id },
       data: {
-        plaid_access_token: access_token,
+        plaid_access_token: encryptedToken,
         plaid_item_id: item_id,
         plaid_connected: true,
       },

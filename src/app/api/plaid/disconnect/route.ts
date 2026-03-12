@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requirePlaidClient } from "@/lib/plaid/client";
+import { decryptToken } from "@/lib/plaid/encryption";
 import { requireDatabase } from "@/lib/prisma/client";
 
 export async function POST() {
@@ -30,8 +31,9 @@ export async function POST() {
     // Remove the Item from Plaid (revokes access)
     if (dbUser?.plaid_access_token) {
       try {
+        const accessToken = decryptToken(dbUser.plaid_access_token);
         await plaid.itemRemove({
-          access_token: dbUser.plaid_access_token,
+          access_token: accessToken,
         });
       } catch (err) {
         // Log but don't fail — we still want to clear local state
