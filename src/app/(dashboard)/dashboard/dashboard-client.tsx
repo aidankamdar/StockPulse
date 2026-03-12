@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 
-import { usePortfolios, usePositions, useRobinhoodSync } from "@/hooks/use-portfolio";
+import { usePortfolios, usePositions, usePlaidSync, usePlaidStatus } from "@/hooks/use-portfolio";
 import { PortfolioSummaryBar } from "@/components/portfolio/portfolio-summary-bar";
 import { PositionTable } from "@/components/portfolio/position-table";
 import { AddTransactionDialog } from "@/components/portfolio/add-transaction-dialog";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Plus } from "lucide-react";
+import { RefreshCw, Plus, Link as LinkIcon } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils/format";
+
 import type { PositionView } from "@/types/portfolio";
 
 export function DashboardClient() {
@@ -21,9 +22,11 @@ export function DashboardClient() {
     primaryPortfolio?.id
   );
 
-  const sync = useRobinhoodSync();
+  const { data: plaidStatus } = usePlaidStatus();
+  const sync = usePlaidSync();
 
   const isLoading = portfoliosLoading || positionsLoading;
+  const isPlaidConnected = plaidStatus?.connected === true;
 
   // Calculate summary from positions
   const positionViews: PositionView[] = (positions ?? []).map(
@@ -73,24 +76,34 @@ export function DashboardClient() {
       <div className="rounded-lg border border-border bg-card p-8 text-center">
         <h2 className="text-lg font-semibold">Get started</h2>
         <p className="mt-2 text-muted-foreground">
-          Add your first trade to see your portfolio, or sync your Robinhood
-          account.
+          {isPlaidConnected
+            ? "Your investment account is connected. Sync to import your positions, or add a trade manually."
+            : "Connect your investment account in Settings, or add your first trade manually."}
         </p>
         <div className="mt-4 flex justify-center gap-3">
           <Button onClick={() => setShowAddTrade(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Add Trade
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => sync.mutate()}
-            disabled={sync.isPending}
-          >
-            <RefreshCw
-              className={`mr-2 h-4 w-4 ${sync.isPending ? "animate-spin" : ""}`}
-            />
-            {sync.isPending ? "Syncing..." : "Sync Robinhood"}
-          </Button>
+          {isPlaidConnected ? (
+            <Button
+              variant="outline"
+              onClick={() => sync.mutate()}
+              disabled={sync.isPending}
+            >
+              <RefreshCw
+                className={`mr-2 h-4 w-4 ${sync.isPending ? "animate-spin" : ""}`}
+              />
+              {sync.isPending ? "Syncing..." : "Sync Portfolio"}
+            </Button>
+          ) : (
+            <Button variant="outline" asChild>
+              <a href="/settings">
+                <LinkIcon className="mr-2 h-4 w-4" />
+                Connect Account
+              </a>
+            </Button>
+          )}
         </div>
         {sync.isError && (
           <p className="mt-3 text-sm text-destructive">
@@ -114,7 +127,12 @@ export function DashboardClient() {
       {/* Action bar */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          {positionViews[0]?.lastSyncedAt && (
+          {plaidStatus?.last_synced_at && (
+            <span>
+              Last synced {formatRelativeTime(plaidStatus.last_synced_at)}
+            </span>
+          )}
+          {!plaidStatus?.last_synced_at && positionViews[0]?.lastSyncedAt && (
             <span>
               Last synced {formatRelativeTime(positionViews[0].lastSyncedAt)}
             </span>
@@ -125,17 +143,19 @@ export function DashboardClient() {
             <Plus className="mr-2 h-4 w-4" />
             Add Trade
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => sync.mutate()}
-            disabled={sync.isPending}
-          >
-            <RefreshCw
-              className={`mr-2 h-4 w-4 ${sync.isPending ? "animate-spin" : ""}`}
-            />
-            {sync.isPending ? "Syncing..." : "Sync"}
-          </Button>
+          {isPlaidConnected && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => sync.mutate()}
+              disabled={sync.isPending}
+            >
+              <RefreshCw
+                className={`mr-2 h-4 w-4 ${sync.isPending ? "animate-spin" : ""}`}
+              />
+              {sync.isPending ? "Syncing..." : "Sync"}
+            </Button>
+          )}
         </div>
       </div>
 

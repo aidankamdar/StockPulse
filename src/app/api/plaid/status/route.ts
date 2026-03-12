@@ -6,6 +6,7 @@ export async function GET() {
   try {
     const db = requireDatabase();
 
+    // Auth check
     const supabase = await createClient();
     const {
       data: { user },
@@ -20,11 +21,11 @@ export async function GET() {
 
     const dbUser = await db.user.findUnique({
       where: { id: user.id },
-      select: { robinhood_connected: true },
+      select: { plaid_connected: true },
     });
 
     const portfolio = await db.portfolio.findFirst({
-      where: { user_id: user.id, source: "ROBINHOOD" },
+      where: { user_id: user.id, source: "PLAID" },
       include: {
         positions: {
           select: { last_synced_at: true },
@@ -38,16 +39,14 @@ export async function GET() {
 
     return NextResponse.json({
       data: {
-        connected: dbUser?.robinhood_connected ?? false,
+        connected: dbUser?.plaid_connected ?? false,
         portfolio_id: portfolio?.id ?? null,
         last_synced_at: lastSyncedAt,
-        has_credentials: Boolean(
-          process.env.ROBINHOOD_USERNAME && process.env.ROBINHOOD_PASSWORD
-        ),
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to check status";
+    const message =
+      error instanceof Error ? error.message : "Failed to check status";
     return NextResponse.json(
       { error: { code: "STATUS_CHECK_FAILED", message } },
       { status: 500 }

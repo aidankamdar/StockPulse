@@ -517,10 +517,10 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 - [x] Supabase Auth (login/register)
 - [x] Database schema: all models above (8 models, Prisma 7 with pg adapter)
 - [x] Dashboard layout (sidebar, header, dark/light mode)
-- [x] Robinhood integration: connect, pull positions + account value (robin-stocks Python scripts)
+- [] Robinhood integration: connect, pull positions + account value (robin-stocks Python scripts)
 - [x] Auto-sync transaction history from Robinhood (dedup by robinhood_order_id)
-- [x] Portfolio view: positions with live prices, total value, daily change
-- [x] P&L calculations: cost basis, unrealized gains/losses (25 unit tests, 100% coverage)
+- [] Portfolio view: positions with live prices, total value, daily change
+- [] P&L calculations: cost basis, unrealized gains/losses (25 unit tests, 100% coverage)
 - [x] Manual trade entry (fallback for non-Robinhood trades)
 - [x] Vercel deployment + Supabase production database
 - [x] User provisioning (bridge Supabase Auth → Prisma User table)

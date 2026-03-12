@@ -38,10 +38,10 @@ export function usePositions(portfolioId: string | undefined) {
   });
 }
 
-// ─── Robinhood sync ──────────────────────────────────────────────────────────
+// ─── Plaid sync ─────────────────────────────────────────────────────────────
 
-async function triggerSync() {
-  const res = await fetch("/api/robinhood/sync", { method: "POST" });
+async function triggerPlaidSync() {
+  const res = await fetch("/api/plaid/sync", { method: "POST" });
   if (!res.ok) {
     const json = await res.json();
     throw new Error(json.error?.message ?? "Sync failed");
@@ -49,32 +49,34 @@ async function triggerSync() {
   return res.json();
 }
 
-export function useRobinhoodSync() {
+export function usePlaidSync() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: triggerSync,
+    mutationFn: triggerPlaidSync,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portfolios"] });
       queryClient.invalidateQueries({ queryKey: ["positions"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["plaid-status"] });
     },
   });
 }
 
-// ─── Robinhood status ────────────────────────────────────────────────────────
+// ─── Plaid status ───────────────────────────────────────────────────────────
 
-async function fetchRobinhoodStatus() {
-  const res = await fetch("/api/robinhood/status");
-  if (!res.ok) throw new Error("Failed to check Robinhood status");
+async function fetchPlaidStatus() {
+  const res = await fetch("/api/plaid/status");
+  if (!res.ok) throw new Error("Failed to check Plaid status");
   const json = await res.json();
   return json.data;
 }
 
-export function useRobinhoodStatus() {
+export function usePlaidStatus() {
   return useQuery({
-    queryKey: ["robinhood-status"],
-    queryFn: fetchRobinhoodStatus,
+    queryKey: ["plaid-status"],
+    queryFn: fetchPlaidStatus,
     staleTime: CACHE_TIMES.PORTFOLIO,
   });
 }
+
