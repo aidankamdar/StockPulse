@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from "react";
 import { usePlaidLink } from "react-plaid-link";
+import { toast } from "sonner";
+
 import { usePlaidStatus } from "@/hooks/use-portfolio";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -19,6 +21,7 @@ export function PlaidConnectCard() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [syncWarning, setSyncWarning] = useState<string | null>(null);
 
   const isConnected = plaidStatus?.connected === true;
 
@@ -44,6 +47,19 @@ export function PlaidConnectCard() {
         const syncJson = await syncRes.json();
         if (!syncRes.ok) {
           console.warn("Initial sync failed:", syncJson.error?.message);
+          toast.error("Initial sync failed. Try syncing again from Settings.");
+        } else {
+          const data = syncJson.data;
+          const posCount = data?.positions ?? 0;
+          const txCount = data?.transactions_synced ?? 0;
+          toast.success(
+            `Connected! Synced ${posCount} position${posCount !== 1 ? "s" : ""}, ${txCount} transaction${txCount !== 1 ? "s" : ""}`
+          );
+          if (posCount === 0) {
+            setSyncWarning(
+              "Connected but no investment positions found. If your account only has cash, it will appear after the next update."
+            );
+          }
         }
 
         // Refresh all queries
@@ -78,6 +94,7 @@ export function PlaidConnectCard() {
   const handleConnect = useCallback(async () => {
     setConnectState("creating_token");
     setErrorMessage(null);
+    setSyncWarning(null);
     try {
       const res = await fetch("/api/plaid/link-token", { method: "POST" });
       const json = await res.json();
@@ -101,18 +118,36 @@ export function PlaidConnectCard() {
 
   const handleSync = useCallback(async () => {
     setIsSyncing(true);
+    setSyncWarning(null);
     try {
       const res = await fetch("/api/plaid/sync", { method: "POST" });
+      const json = await res.json();
       if (!res.ok) {
-        const json = await res.json();
         throw new Error(json.error?.message ?? "Sync failed");
       }
+      const data = json.data;
+      const posCount = data?.positions ?? 0;
+      const txSynced = data?.transactions_synced ?? 0;
+      const txSkipped = data?.transactions_skipped ?? 0;
+
+      toast.success(
+        `Synced ${posCount} position${posCount !== 1 ? "s" : ""}, ${txSynced} transaction${txSynced !== 1 ? "s" : ""}${txSkipped > 0 ? ` (${txSkipped} skipped)` : ""}`
+      );
+
+      if (posCount === 0) {
+        setSyncWarning(
+          "No positions found. Your brokerage account may only contain cash, or holdings data is not yet available."
+        );
+      }
+
       queryClient.invalidateQueries({ queryKey: ["plaid-status"] });
       queryClient.invalidateQueries({ queryKey: ["portfolios"] });
       queryClient.invalidateQueries({ queryKey: ["positions"] });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Sync failed");
+      const msg = err instanceof Error ? err.message : "Sync failed";
+      setErrorMessage(msg);
+      toast.error(`Sync failed: ${msg}`);
     } finally {
       setIsSyncing(false);
     }
@@ -130,6 +165,8 @@ export function PlaidConnectCard() {
       }
       queryClient.invalidateQueries({ queryKey: ["plaid-status"] });
       setLinkToken(null);
+      setSyncWarning(null);
+      toast.success("Investment account disconnected");
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Disconnect failed");
     } finally {
@@ -217,6 +254,19 @@ export function PlaidConnectCard() {
           </div>
         )}
       </div>
+
+      {/* Sync warning (0 positions) */}
+      {syncWarning && (
+        <div className="mt-3 rounded-md bg-yellow-500/10 px-3 py-2 text-sm text-yellow-700 dark:text-yellow-400">
+          {syncWarning}
+          <button
+            onClick={() => setSyncWarning(null)}
+            className="ml-2 underline hover:no-underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {errorMessage && (
         <div className="mt-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">

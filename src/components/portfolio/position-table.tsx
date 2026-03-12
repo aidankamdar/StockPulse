@@ -30,30 +30,30 @@ export function PositionTable({ positions, showWeight = false }: PositionTablePr
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full min-w-[700px]">
           <thead>
             <tr className="border-b border-border">
-              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+              <th className="whitespace-nowrap px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                 Symbol
               </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
+              <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-muted-foreground">
                 Shares
               </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
+              <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-muted-foreground">
                 Price
               </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
+              <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-muted-foreground">
                 Avg Cost
               </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
+              <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-muted-foreground">
                 Value
               </th>
               {showWeight && (
-                <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
+                <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-muted-foreground">
                   Weight
                 </th>
               )}
-              <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
+              <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-muted-foreground">
                 P&L
               </th>
             </tr>
@@ -67,7 +67,7 @@ export function PositionTable({ positions, showWeight = false }: PositionTablePr
                   onClick={() => router.push(`/portfolio/${pos.symbol}`)}
                   className="cursor-pointer border-b border-border last:border-0 hover:bg-muted/50 transition-colors"
                 >
-                  <td className="px-4 py-3">
+                  <td className="whitespace-nowrap px-4 py-3">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold">{pos.symbol}</span>
                       {pos.sector && (
@@ -77,24 +77,24 @@ export function PositionTable({ positions, showWeight = false }: PositionTablePr
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
+                  <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">
                     {formatNumber(pos.quantity, pos.quantity % 1 !== 0 ? 4 : 0)}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
+                  <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">
                     {formatCurrency(pos.currentPrice)}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
+                  <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">
                     {formatCurrency(pos.averageCostBasis)}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums font-medium">
+                  <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums font-medium">
                     {formatCurrency(pos.currentValue)}
                   </td>
                   {showWeight && (
-                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-muted-foreground">
                       {formatPercent(weight).replace("+", "")}
                     </td>
                   )}
-                  <td className="px-4 py-3 text-right">
+                  <td className="whitespace-nowrap px-4 py-3 text-right">
                     <PriceChangeIndicator
                       value={pos.unrealizedPnl}
                       percent={pos.unrealizedPnlPercent}

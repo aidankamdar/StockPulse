@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Plus, Eye } from "lucide-react";
 
-import { useWatchlist } from "@/hooks/use-watchlist";
+import { useWatchlist, useWatchlistQuotes } from "@/hooks/use-watchlist";
 import { WatchlistTable } from "@/components/watchlist/watchlist-table";
 import { AddToWatchlistDialog } from "@/components/watchlist/add-to-watchlist-dialog";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function WatchlistPage() {
   const [showAdd, setShowAdd] = useState(false);
   const { data: watchlist, isLoading } = useWatchlist();
+  const symbols = (watchlist ?? []).map((item) => item.symbol);
+  const { quotes, isLoading: quotesLoading } = useWatchlistQuotes(symbols);
 
   return (
     <div className="space-y-6">
@@ -42,7 +44,11 @@ export default function WatchlistPage() {
               Tracking {watchlist.length} stock{watchlist.length !== 1 ? "s" : ""}
             </div>
           )}
-          <WatchlistTable items={watchlist ?? []} />
+          <WatchlistTable
+            items={watchlist ?? []}
+            quotes={quotes}
+            quotesLoading={quotesLoading}
+          />
         </>
       )}
 

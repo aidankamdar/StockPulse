@@ -14,6 +14,7 @@ export interface NavItem {
   title: string;
   href: string;
   icon: LucideIcon;
+  badge?: string;
 }
 
 export const mainNavItems: NavItem[] = [
@@ -21,9 +22,9 @@ export const mainNavItems: NavItem[] = [
   { title: "Portfolio", href: "/portfolio", icon: Briefcase },
   { title: "Transactions", href: "/transactions", icon: ArrowLeftRight },
   { title: "Analytics", href: "/analytics", icon: BarChart3 },
-  { title: "AI Insights", href: "/ai", icon: Bot },
+  { title: "AI Insights", href: "/ai", icon: Bot, badge: "Soon" },
   { title: "Watchlist", href: "/watchlist", icon: Eye },
-  { title: "Alerts", href: "/alerts", icon: Bell },
+  { title: "Alerts", href: "/alerts", icon: Bell, badge: "Soon" },
 ];
 
 export const bottomNavItems: NavItem[] = [

@@ -1,14 +1,19 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { LogOut, RefreshCw } from "lucide-react";
+
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { MobileNav } from "@/components/layout/mobile-nav";
-import { LogOut, RefreshCw } from "lucide-react";
+import { usePlaidSync, usePlaidStatus } from "@/hooks/use-portfolio";
 
 export function Header() {
   const router = useRouter();
+  const { data: plaidStatus } = usePlaidStatus();
+  const sync = usePlaidSync();
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -25,9 +30,22 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" title="Sync Robinhood">
-          <RefreshCw className="h-4 w-4" />
-        </Button>
+        {plaidStatus?.connected === true && (
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Sync Portfolio"
+            disabled={sync.isPending}
+            onClick={() =>
+              sync.mutate(undefined, {
+                onSuccess: () => toast.success("Portfolio synced"),
+                onError: (e) => toast.error(e.message),
+              })
+            }
+          >
+            <RefreshCw className={`h-4 w-4 ${sync.isPending ? "animate-spin" : ""}`} />
+          </Button>
+        )}
         <ThemeToggle />
         <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign out">
           <LogOut className="h-4 w-4" />

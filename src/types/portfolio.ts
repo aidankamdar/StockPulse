@@ -8,6 +8,7 @@ export interface PortfolioSummary {
   dayChange: number;
   dayChangePercent: number;
   positionCount: number;
+  cashBalance: number;
   lastSyncedAt: string | null;
 }
 

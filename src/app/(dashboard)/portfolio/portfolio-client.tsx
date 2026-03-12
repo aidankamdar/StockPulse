@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Search, RefreshCw, Plus, Link as LinkIcon } from "lucide-react";
+import { toast } from "sonner";
 
 import { usePortfolios, usePositions, usePlaidSync, usePlaidStatus } from "@/hooks/use-portfolio";
 import { PortfolioSummaryBar } from "@/components/portfolio/portfolio-summary-bar";
@@ -13,31 +14,58 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatRelativeTime } from "@/lib/utils/format";
 
 import type { PositionView } from "@/types/portfolio";
 
+const ALL_PORTFOLIOS = "__all__";
+
 export function PortfolioClient() {
   const [showAddTrade, setShowAddTrade] = useState(false);
   const [search, setSearch] = useState("");
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string>(ALL_PORTFOLIOS);
 
   const { data: portfolios, isLoading: portfoliosLoading } = usePortfolios();
-  const primaryPortfolio = portfolios?.[0];
 
-  const { data: positions, isLoading: positionsLoading } = usePositions(
-    primaryPortfolio?.id
+  const firstPortfolio = portfolios?.[0];
+  const secondPortfolio = portfolios?.[1];
+
+  const { data: positions1, isLoading: pos1Loading } = usePositions(
+    selectedPortfolioId === ALL_PORTFOLIOS
+      ? firstPortfolio?.id
+      : selectedPortfolioId
+  );
+  const { data: positions2, isLoading: pos2Loading } = usePositions(
+    selectedPortfolioId === ALL_PORTFOLIOS ? secondPortfolio?.id : undefined
   );
 
   const { data: plaidStatus } = usePlaidStatus();
   const sync = usePlaidSync();
 
-  const isLoading = portfoliosLoading || positionsLoading;
+  const isLoading = portfoliosLoading || pos1Loading || (selectedPortfolioId === ALL_PORTFOLIOS && pos2Loading);
   const isPlaidConnected = plaidStatus?.connected === true;
 
-  // Map raw API positions to typed PositionView
+  const primaryPortfolioId = useMemo(() => {
+    if (!portfolios) return undefined;
+    if (selectedPortfolioId === ALL_PORTFOLIOS) return portfolios[0]?.id;
+    return selectedPortfolioId;
+  }, [portfolios, selectedPortfolioId]);
+
+  // Merge positions from active portfolios
   const positionViews: PositionView[] = useMemo(
-    () =>
-      (positions ?? []).map((p: Record<string, unknown>) => ({
+    () => {
+      const allPositions = [
+        ...(positions1 ?? []),
+        ...(selectedPortfolioId === ALL_PORTFOLIOS ? (positions2 ?? []) : []),
+      ];
+      return allPositions.map((p: Record<string, unknown>) => ({
         id: p.id as string,
         symbol: p.symbol as string,
         quantity: p.quantity as number,
@@ -49,8 +77,9 @@ export function PortfolioClient() {
         unrealizedPnlPercent: p.unrealized_pnl_percent as number,
         sector: (p.sector as string) ?? null,
         lastSyncedAt: (p.last_synced_at as string) ?? null,
-      })),
-    [positions]
+      }));
+    },
+    [positions1, positions2, selectedPortfolioId]
   );
 
   // Filter by search term
@@ -64,14 +93,36 @@ export function PortfolioClient() {
     );
   }, [positionViews, search]);
 
-  // Summary calculations
-  const totalValue = positionViews.reduce((s, p) => s + p.currentValue, 0);
+  // Summary calculations (include cash)
+  const cashBalance = useMemo(() => {
+    return (portfolios ?? [])
+      .filter((p: Record<string, unknown>) =>
+        selectedPortfolioId === ALL_PORTFOLIOS || p.id === selectedPortfolioId
+      )
+      .reduce((s: number, p: Record<string, unknown>) => s + (Number(p.cash_balance) || 0), 0);
+  }, [portfolios, selectedPortfolioId]);
+
+  const positionsTotal = positionViews.reduce((s, p) => s + p.currentValue, 0);
+  const totalValue = positionsTotal + cashBalance;
   const totalCostBasis = positionViews.reduce((s, p) => s + p.totalCostBasis, 0);
   const totalPnl = totalValue - totalCostBasis;
   const totalPnlPercent =
     totalCostBasis > 0 ? (totalPnl / totalCostBasis) * 100 : 0;
 
   const sectorAllocation = calculateSectorAllocation(positionViews);
+
+  const handleSync = () => {
+    sync.mutate(undefined, {
+      onSuccess: (data) => {
+        toast.success(
+          `Synced ${data.positions} position${data.positions !== 1 ? "s" : ""}, ${data.transactions_synced} transaction${data.transactions_synced !== 1 ? "s" : ""}`
+        );
+      },
+      onError: (error) => {
+        toast.error(`Sync failed: ${error.message}`);
+      },
+    });
+  };
 
   if (isLoading) {
     return (
@@ -87,7 +138,7 @@ export function PortfolioClient() {
     );
   }
 
-  if (!primaryPortfolio) {
+  if (!primaryPortfolioId) {
     return (
       <div className="rounded-lg border border-border bg-card p-8 text-center">
         <p className="text-muted-foreground">
@@ -101,14 +152,32 @@ export function PortfolioClient() {
     <div className="space-y-6">
       {/* Action bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by symbol or sector..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex items-center gap-3">
+          {/* Portfolio switcher */}
+          {portfolios && portfolios.length > 1 && (
+            <Select value={selectedPortfolioId} onValueChange={setSelectedPortfolioId}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select portfolio" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_PORTFOLIOS}>All Portfolios</SelectItem>
+                {portfolios.map((p: Record<string, unknown>) => (
+                  <SelectItem key={p.id as string} value={p.id as string}>
+                    {p.name as string}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by symbol or sector..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
         </div>
         <div className="flex gap-2">
           <Button size="sm" onClick={() => setShowAddTrade(true)}>
@@ -119,7 +188,7 @@ export function PortfolioClient() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => sync.mutate()}
+              onClick={handleSync}
               disabled={sync.isPending}
             >
               <RefreshCw
@@ -152,6 +221,7 @@ export function PortfolioClient() {
         totalPnl={totalPnl}
         totalPnlPercent={totalPnlPercent}
         positionCount={positionViews.length}
+        cashBalance={cashBalance}
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -184,7 +254,7 @@ export function PortfolioClient() {
       )}
 
       <AddTransactionDialog
-        portfolioId={primaryPortfolio.id}
+        portfolioId={primaryPortfolioId}
         open={showAddTrade}
         onClose={() => setShowAddTrade(false)}
       />

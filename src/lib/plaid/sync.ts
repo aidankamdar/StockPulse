@@ -33,6 +33,11 @@ export async function syncHoldings(userId: string, portfolioId: string) {
   });
 
   const { holdings, securities } = response.data;
+  const accountCount = response.data.accounts?.length ?? 0;
+
+  console.log(
+    `[plaid-sync] Holdings response: ${holdings.length} holdings, ${securities.length} securities, ${accountCount} accounts`
+  );
 
   // Build security lookup map
   const securityMap = new Map(
@@ -48,12 +53,15 @@ export async function syncHoldings(userId: string, portfolioId: string) {
 
     // Skip holdings without a ticker (e.g., cash positions)
     if (!symbol || security?.type === "cash") {
+      console.log(
+        `[plaid-sync] Skipping holding: symbol=${symbol}, type=${security?.type}`
+      );
       continue;
     }
 
     const quantity = holding.quantity;
-    const currentPrice = holding.institution_price;
-    const currentValue = holding.institution_value;
+    const currentPrice = holding.institution_price ?? 0;
+    const currentValue = holding.institution_value ?? 0;
     const costBasis = holding.cost_basis ?? 0;
     const averageCostBasis = quantity > 0 ? costBasis / quantity : 0;
     const unrealizedPnl = currentValue - costBasis;
@@ -106,13 +114,29 @@ export async function syncHoldings(userId: string, portfolioId: string) {
     });
   }
 
-  // Mark portfolio as Plaid-connected
+  // Extract cash balance from accounts
+  const accounts = response.data.accounts ?? [];
+  const cashBalance = accounts.reduce(
+    (sum, acct) => sum + (acct.balances.current ?? 0),
+    0
+  );
+
+  // Update portfolio: mark as Plaid-connected and store cash balance
   await db.portfolio.update({
     where: { id: portfolioId },
-    data: { source: "PLAID" },
+    data: {
+      source: "PLAID",
+      cash_balance: cashBalance > 0 ? cashBalance : 0,
+    },
   });
 
-  return { positionCount: syncedSymbols.length };
+  console.log(`[plaid-sync] Synced ${syncedSymbols.length} positions`);
+
+  return {
+    positionCount: syncedSymbols.length,
+    holdingsReceived: holdings.length,
+    securitiesReceived: securities.length,
+  };
 }
 
 // ─── Sync Transactions ──────────────────────────────────────────────────────
@@ -165,6 +189,10 @@ export async function syncTransactions(userId: string, portfolioId: string) {
   });
 
   const { investment_transactions: transactions, securities } = response.data;
+
+  console.log(
+    `[plaid-sync] Transactions response: ${transactions.length} transactions`
+  );
 
   // Build security lookup
   const securityMap = new Map(
@@ -240,6 +268,8 @@ export async function fullPlaidSync(userId: string, portfolioId: string) {
 
   return {
     positions: holdingsResult.positionCount,
+    holdingsReceived: holdingsResult.holdingsReceived,
+    securitiesReceived: holdingsResult.securitiesReceived,
     orders: transactionsResult,
   };
 }

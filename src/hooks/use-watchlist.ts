@@ -1,9 +1,9 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CACHE_TIMES } from "@/lib/utils/constants";
 
-import type { WatchlistItemView } from "@/types/analytics";
+import type { WatchlistItemView, StockDetail } from "@/types/analytics";
 
 // ─── Fetch watchlist ────────────────────────────────────────────────────────
 
@@ -20,6 +20,49 @@ export function useWatchlist() {
     queryFn: fetchWatchlist,
     staleTime: CACHE_TIMES.PORTFOLIO,
   });
+}
+
+// ─── Watchlist quotes ────────────────────────────────────────────────────────
+
+export interface WatchlistQuote {
+  lastPrice: number;
+  change: number;
+  changePercent: number;
+}
+
+async function fetchStockQuote(symbol: string): Promise<WatchlistQuote> {
+  const res = await fetch(`/api/stocks/${symbol}`);
+  if (!res.ok) throw new Error(`Failed to fetch quote for ${symbol}`);
+  const json = await res.json();
+  const detail: StockDetail = json.data;
+  return {
+    lastPrice: detail.lastPrice,
+    change: detail.change,
+    changePercent: detail.changePercent,
+  };
+}
+
+export function useWatchlistQuotes(symbols: string[]) {
+  const results = useQueries({
+    queries: symbols.map((symbol) => ({
+      queryKey: ["stock-quote", symbol],
+      queryFn: () => fetchStockQuote(symbol),
+      staleTime: CACHE_TIMES.STOCK_QUOTE,
+      enabled: symbols.length > 0,
+    })),
+  });
+
+  const quotes: Record<string, WatchlistQuote> = {};
+  for (let i = 0; i < symbols.length; i++) {
+    const result = results[i];
+    if (result?.data) {
+      quotes[symbols[i]] = result.data;
+    }
+  }
+
+  const isLoading = results.some((r) => r.isLoading);
+
+  return { quotes, isLoading };
 }
 
 // ─── Add to watchlist ───────────────────────────────────────────────────────
