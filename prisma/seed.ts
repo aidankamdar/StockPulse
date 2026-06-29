@@ -7,8 +7,23 @@
  */
 
 import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import pg from "pg";
 
-const db = new PrismaClient();
+const rawUrl = process.env.DATABASE_URL;
+if (!rawUrl) {
+  throw new Error("DATABASE_URL environment variable is required");
+}
+
+// Strip sslmode so the pg-connection-string parser doesn't override SSL
+// config (matches src/lib/prisma/client.ts and seed-snapshots.ts).
+const connectionString = rawUrl.replace(/[?&]sslmode=[^&]+/, "");
+const pool = new pg.Pool({
+  connectionString,
+  ssl: { rejectUnauthorized: false },
+});
+const adapter = new PrismaPg(pool);
+const db = new PrismaClient({ adapter });
 
 // Stable test UUIDs so re-seeding is idempotent
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000001";
